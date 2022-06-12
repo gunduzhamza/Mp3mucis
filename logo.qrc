@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="Volumelogo">
+    <file>img/sound-icon.png</file>
+  </qresource>
+</RCC>
