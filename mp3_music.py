@@ -18,10 +18,11 @@ class myApp(QtWidgets.QMainWindow):
         self.ui=Ui_HDMuzikcehennemi()
         self.ui.setupUi(self)
         self.player=QMediaPlayer()
+
         self.ui.listWidget.itemDoubleClicked.connect(self.Playmusic)
         self.ui.playbutton.clicked.connect(self.pauseMusic)
         self.ui.comboBox.activated.connect(self.liste)
-        self.ui.comboSanatci.activated.connect(self.sanatciListesi)
+        self.ui.comboSanatci.activated.connect(self.sanatcisarkilari)
         self.ui.playlistButton.clicked.connect(self.playList)
         self.ui.comboBox_playlist.activated.connect(self.calmalistesi)
 
@@ -34,25 +35,30 @@ class myApp(QtWidgets.QMainWindow):
         qpixmap=qpixmap.scaled(30, 30)
         self.ui.label_2.setPixmap(qpixmap)
         
+        #vertical slider settings
         volume=self.player.volume()
         self.ui.Volumeslider.setRange(0,100)
         self.ui.Volumeslider.setValue(round(int(volume)/2))
         self.ui.Volumeslider.valueChanged.connect(self.volume_slider)
 
+        #horizontal slider settings
         self.ui.horizontalSlider.setRange(0,0)
         self.ui.horizontalSlider.sliderMoved.connect(self.set_position)
         self.player.positionChanged.connect(self.position_changed)
         self.player.durationChanged.connect(self.duration_changed)
         
+        #the path of music list
         self.rootpath="C:\\Users\gundu\OneDrive\Masaüstü\Yazılım\Python\QtDesigner\Mp3mucis\Ezgi"
         self.musiclist=os.listdir(self.rootpath) 
-    
+
+        #cretating a database named sarkilar means(musics)
         self.baglanti=sqlite3.connect("sarkilar.db")
         self.islem=self.baglanti.cursor()
         self.baglanti.commit()
         self.table=self.islem.execute("create table if not exists sarki(sarkiAdi text,sanatci text, muzikUrl text)")
         self.baglanti.commit()
        
+        #adding song to the database table named sarki
         listOfTables = self.islem.execute("SELECT count(muzikUrl) FROM sarki").fetchall()
         if listOfTables==[(0,)]:
             for i in range(len(self.musiclist)):
@@ -61,31 +67,47 @@ class myApp(QtWidgets.QMainWindow):
                 
             self.baglanti.commit()
 
+        #selecting singers name only one time and adding them to a list named liste
         Sanatciisimleri=self.islem.execute("Select DISTINCT sanatci from sarki").fetchall()
-        liste=[]
+        liste=[] #empty list
         for i in range(len(Sanatciisimleri)): 
             liste.append(Sanatciisimleri[i][0])
-
-        calma_listeleri=self.islem.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-        print(calma_listeleri)
         
+        #taking table names of playlists that we already created in gui
+        calma_listeleri=self.islem.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+        
+        #adding the name of playlist into the empty list named calmalist
         calmalist=[]
         for i in range(1,len(calma_listeleri)):
             calmalist.append(calma_listeleri[i][0])
-        print(calmalist)
+
+        #adding the singers name and the playlists into the diffirent combo boxes
         self.ui.comboBox.addItem("Sanatçılar",liste)
         self.ui.comboBox.addItem("Çalma Listeleri",calmalist)
 
+    #showing the second window when we push the plus button tto create a new playlist 
     def playList(self):
        win2=playlist()
        win2.show()
        win2.exec_()
 
-
+    #volume slider settings
     def volume_slider(self):
         volume=self.ui.Volumeslider.value()
         self.player.setVolume(volume)
         self.ui.volumelabel.setText(str(volume)+"%")
+
+        if volume==0:
+
+            qpixmap=QPixmap("img/soundoff-icon.png")
+            qpixmap=qpixmap.scaled(30, 30)
+            self.ui.label_2.setPixmap(qpixmap)
+        else:
+            qpixmap=QPixmap("img/sound-icon.png")
+            qpixmap=qpixmap.scaled(30, 30)
+            self.ui.label_2.setPixmap(qpixmap)
+
+
 
     def position_changed(self,position):
         self.ui.horizontalSlider.setValue(position)
@@ -96,6 +118,7 @@ class myApp(QtWidgets.QMainWindow):
     def set_position(self,position):
         self.player.setPosition(position)
 
+    #combobox function that connecting to the indexes that we want to see
     def liste(self,index):
         if index==0:
             self.ui.playlistButton.hide()
@@ -125,19 +148,19 @@ class myApp(QtWidgets.QMainWindow):
 
             
         
-
-    def sanatciListesi(self):
-        
+    #list of singer on combobox
+    def sanatcisarkilari(self):
+        #this functions shows the songs of the singers that we clicked on
         currentsinger=self.ui.comboSanatci.currentText()
         self.ui.listWidget.clear()
-        sanatcilistesi2=self.islem.execute("select * from sarki").fetchall()
+        sanatcilar=self.islem.execute("select * from sarki").fetchall()
         
         
-        for i in range(len(sanatcilistesi2)):
-            if sanatcilistesi2[i][1]==currentsinger:
-                self.ui.listWidget.addItem(sanatcilistesi2[i][2])
+        for i in range(len(sanatcilar)):
+            if sanatcilar[i][1]==currentsinger:
+                self.ui.listWidget.addItem(sanatcilar[i][2])
 
-        
+    #playlist function  
     def calmalistesi(self):
         self.ui.listWidget.clear()  
         current_list=self.ui.comboBox_playlist.currentText()
@@ -147,9 +170,9 @@ class myApp(QtWidgets.QMainWindow):
                 currentplaylist=self.islem.execute('SELECT * FROM {}'.format(current_list)).fetchall()
                 for i in range(len(currentplaylist)):
                     self.ui.listWidget.addItem(currentplaylist[i][0])
-                print(currentplaylist)
+                
     
-
+    #music play function
     def Playmusic(self,item):
             sarki=item.text()
             full_file_path=os.path.join(self.rootpath,sarki)
@@ -160,15 +183,13 @@ class myApp(QtWidgets.QMainWindow):
             self.player.play()
             self.ui.musicName.setText(sarki)
             
-            
-
             icon = QtGui.QIcon()
             icon.addPixmap(QtGui.QPixmap("img/pause.png"))
             self.ui.playbutton.setIcon(icon)
         
     
 
-
+    #music pause function
     def pauseMusic(self):
             if self.player.state()==QMediaPlayer.PlayingState:
                 self.player.pause()
@@ -180,6 +201,7 @@ class myApp(QtWidgets.QMainWindow):
                 icon = QtGui.QIcon()
                 icon.addPixmap(QtGui.QPixmap("img/pause.png"))
                 self.ui.playbutton.setIcon(icon)
+
 class playlist(QDialog):
     def __init__(self):
         super(playlist,self).__init__()
@@ -198,7 +220,7 @@ class playlist(QDialog):
                 
 
         self.list=[]  
-        
+    #creating a new playlist and adding them into a empty list   
     def addMusic(self,item):
         music=item.text()
         count=0
@@ -208,8 +230,9 @@ class playlist(QDialog):
         if count==0:
             self.ui2.listWidget_2.addItem(music)
             self.list.append(music)
-        print(self.list)
+
         return self.list
+    #adding the playlist into the database as a new table that named by the user    
     def playlistMaker(self):
         nameplaylist=self.ui2.listnameedit.text()
         self.baglanti=sqlite3.connect("sarkilar.db")
@@ -223,6 +246,7 @@ class playlist(QDialog):
             self.islem.execute(ekle,(self.list[i],))
                 
             self.baglanti.commit()
+        
         self.close()
         
 
